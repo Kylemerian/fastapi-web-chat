@@ -25,6 +25,18 @@ async def userGetAll(session: AsyncSession):
 
 
 async def userGetById(id: int, session: AsyncSession):
-    res = await session.scalars(select(User).filter(User.id == id))
-    res = res.all()[0]
-    return {res.username, res.hashed_password}
+    res = await session.scalars(select(User).filter_by(User.id == id))
+    res = res.scalar_one_or_none()
+    return {"username": res.username, "hashed_password": res.hashed_password}
+
+async def userGetByLogin(login: str, session: AsyncSession):
+    print("LOGIN:", login)
+    res = await session.execute(select(User).filter_by(username = login))
+    res = res.scalar_one_or_none()
+    if res is None:
+        return None
+    else:
+        return {"username": res.username, "hashed_password": res.hashed_password}
+
+def verifyPassword(passw: str, hashedPass: str):
+    return passw == hashedPass
