@@ -1,6 +1,5 @@
-from sqlalchemy import select, Column, String, Integer
+from sqlalchemy import select, Column, String, Integer, Time, ForeignKey
 from .db import Base
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class User(Base):
@@ -10,33 +9,23 @@ class User(Base):
     username = Column(String, unique=True, index=True)
     hashed_password = Column(String)
 
-
-async def userAdd(username: str, hashed_password: str, session: AsyncSession):
-    user = User(username=username, hashed_password=hashed_password)
-    session.add(user)
-    await session.commit()
-    await session.refresh(user)
-    return user.id
-
-
-async def userGetAll(session: AsyncSession):
-    res = await session.scalars(select(User))
-    return res.all()
-
-
-async def userGetById(id: int, session: AsyncSession):
-    res = await session.scalars(select(User).filter_by(User.id == id))
-    res = res.scalar_one_or_none()
-    return {"username": res.username, "hashed_password": res.hashed_password}
-
-async def userGetByLogin(login: str, session: AsyncSession):
-    print("LOGIN:", login)
-    res = await session.execute(select(User).filter_by(username = login))
-    res = res.scalar_one_or_none()
-    if res is None:
-        return None
-    else:
-        return {"username": res.username, "hashed_password": res.hashed_password}
-
-def verifyPassword(passw: str, hashedPass: str):
-    return passw == hashedPass
+class Chat(Base):
+    __tablename__ = "chats"
+    id = Column(Integer, primary_key=True, index=True)
+    chat_name = Column(String)
+    host_id = Column(Integer)
+    
+    
+class Message(Base):
+    __tablename__ = "messages"
+    id = Column(Integer, primary_key=True, index=True)
+    chat_id = Column(Integer, ForeignKey('chats.id'))
+    sender_id = Column(Integer, ForeignKey('users.id'))
+    text = Column(String)
+    time = Column(Time)
+    
+class ChatMembers(Base):
+    __tablename__ = "chatmembers"
+    id = Column(Integer, primary_key=True, index=True)
+    chat_id = Column(Integer, ForeignKey('chats.id'))
+    user_id = Column(Integer, ForeignKey('users.id'))
