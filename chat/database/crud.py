@@ -23,7 +23,6 @@ async def userGetById(id: int, session: AsyncSession):
     return {"username": res.username, "hashed_password": res.hashed_password}
 
 async def userGetByLogin(login: str, session: AsyncSession):
-    print("LOGIN:", login)
     res = await session.execute(select(User).filter_by(username = login))
     res = res.scalar_one_or_none()
     if res is None:
@@ -55,14 +54,6 @@ async def addMessage(session: AsyncSession, chat_id: int, user_id:int, message: 
 
 
 async def getUserChats(session: AsyncSession, user_id: int):
-    # query = (
-    #     select(ChatMembers.chat_id, ChatMembers.user_id)
-    #     .where(ChatMembers.chat_id.in_(
-    #         select(ChatMembers.chat_id).where(ChatMembers.user_id == user_id)
-    #     ))
-    #     .where(ChatMembers.user_id != user_id)
-    # )
-    
     chat_ids_subquery = (
         select(ChatMembers.chat_id)
         .where(ChatMembers.user_id == user_id)
@@ -93,11 +84,11 @@ async def getUserChats(session: AsyncSession, user_id: int):
             last_message_subquery.c.last_message_time
         )
         .select_from(chat_members_subquery)
-        .join(
+        .outerjoin(
             last_message_subquery,
             chat_members_subquery.c.chat_id == last_message_subquery.c.chat_id
         )
-        .join(
+        .outerjoin(
             Message,
             and_(
                 Message.chat_id == chat_members_subquery.c.chat_id,
@@ -135,21 +126,18 @@ async def getMessagesByChatId(session: AsyncSession, chat_id: int):
     
     result = await session.execute(query)
     rows = result.fetchall()
-    print("OK")
     
     message_list = [
         {
             'message_id': row.Message.id,
             'chat_id': row.Message.chat_id,
+            'sender_id': row.Message.sender_id,
             'text': row.Message.text,
-            'time': row.Message.time
+            'time': row.Message.time.isoformat()
         }
         for row in rows
     ]
     
-    print("OK2")
-    
-    print(message_list)
     return message_list
 
 async def getChatMembersByChatId(session: AsyncSession, chat_id: int):
@@ -166,3 +154,21 @@ async def getChatMembersByChatId(session: AsyncSession, chat_id: int):
     ]
     
     return user_list
+
+async def isExistChatByUserIds(session: AsyncSession, user_id:int, user_id2: int):
+    member1 = aliased(ChatMembers)
+    member2 = aliased(ChatMembers)
+    
+    # Строим запрос на поиск общего чата
+    stmt = (
+        select(member1.chat_id)
+        .join(member2, member1.chat_id == member2.chat_id)
+        .where(member1.user_id == user_id)
+        .where(member2.user_id == user_id2)
+    )
+    
+    # Выполняем запрос
+    result = await session.execute(stmt)
+    chat_id = result.scalar()
+
+    return chat_id is not None

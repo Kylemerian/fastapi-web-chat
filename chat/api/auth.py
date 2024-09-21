@@ -6,10 +6,12 @@ from fastapi.templating import Jinja2Templates
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.db import get_async_session
-from database.crud import *
 
 import jwt
 import datetime
+from database.config import SECRET_HASH
+
+from database.service import *
 
 router = APIRouter()
 
@@ -39,7 +41,7 @@ def getUserInfoFromJWT(request: Request):
 
     try:
         # remove secret
-        payload = jwt.decode(token, "secret", algorithms=["HS256"])
+        payload = jwt.decode(token, SECRET_HASH, algorithms=["HS256"])
         username: str = payload.get("sub")
         uid: int = payload.get("userId")
         if username is None:
@@ -63,24 +65,19 @@ def getUserInfoFromJWT(request: Request):
 
 @router.post("/login")
 async def login(user: User = Depends(login_form), session: AsyncSession=Depends(get_async_session)):
-    usr = await userGetByLogin(user.login, session)
-    if not usr or not verifyPassword(user.password, usr['hashed_password']):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    # remove secret
-    token = jwt.encode({"sub": user.login, "userId": usr['id'], "exp": datetime.datetime.now() + datetime.timedelta(minutes=5)}, "secret", algorithm="HS256")
-    print(token)
+    usr = await usrService.userGetByLogin(user.login, session)
+    if not usr or not usrService.verifyPassword(user.password, usr['hashed_password']):
+        return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
+    # TODO remove secret
+    token = jwt.encode({"sub": user.login, "userId": usr['id'], "exp": datetime.datetime.now() + datetime.timedelta(minutes=1440)}, SECRET_HASH, algorithm="HS256")
     response = RedirectResponse(url="/chat", status_code=302)
     response.set_cookie(
         key="access_token", 
         value=token, 
         # httponly=True,
         httponly=False,
-        max_age=30 * 60,
-        expires=30 * 60, 
+        max_age=1440 * 60,
+        expires=1440 * 60, 
         # secure=True,
         samesite="lax"
     )
@@ -90,8 +87,7 @@ async def login(user: User = Depends(login_form), session: AsyncSession=Depends(
 
 @router.post("/register")
 async def register(user: User = Depends(login_form), session: AsyncSession=Depends(get_async_session)):
-    print(user)
-    res = await userAdd(user.login, user.password, session)
+    res = await usrService.userAdd(user.login, user.password, session)
     return res
 
 
@@ -99,11 +95,9 @@ async def register(user: User = Depends(login_form), session: AsyncSession=Depen
 @router.get("/chat")
 async def chat(request: Request, session: AsyncSession=Depends(get_async_session)):
     data = getUserInfoFromJWT(request)
-    print(data)
-    chats = await getUserChats(session, data['uid'])
-    # TODO change to last chat
-    messages = await getMessagesByChatId(session, 2)
-    print(chats)
+    chats = await chatService.getUserChats(session, data['uid'])
+    messages = []
+    print("")
     return templates.TemplateResponse("chat.html", {"request": request, **data, "chats": chats, "messages": messages})
 
 
@@ -116,10 +110,11 @@ async def chat2(request: Request, session: AsyncSession=Depends(get_async_sessio
 
 # to rework
 @router.post("/addChat")
-async def addc(user: int, user2: int, session: AsyncSession=Depends(get_async_session)):
-    return await addChat(session, user, user2)
+async def addChat(user: int, user2: int, session: AsyncSession=Depends(get_async_session)):
+    return await chatService.addChat(session, user, user2)
+
 
 @router.post("/addMess")
-async def addm(chat_id: int, user_id:int, message: str, session: AsyncSession=Depends(get_async_session)):
+async def addMessage(chat_id: int, user_id:int, message: str, session: AsyncSession=Depends(get_async_session)):
     time = func.now()
-    return await addMessage(session, chat_id, user_id, message, time)
+    return await msgService.addMessage(chat_id, user_id, message, time, session)
