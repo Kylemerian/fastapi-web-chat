@@ -1,8 +1,10 @@
 from pydantic import BaseModel
-from fastapi import Form, Depends, HTTPException, APIRouter, status, Request
+from fastapi import Form, Depends, HTTPException, APIRouter, status, Request, UploadFile, File
 from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.templating import Jinja2Templates
+import shutil
+from pathlib import Path
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.db import get_async_session
@@ -68,7 +70,6 @@ async def login(user: User = Depends(login_form), session: AsyncSession=Depends(
     usr = await usrService.userGetByLogin(user.login, session)
     if not usr or not usrService.verifyPassword(user.password, usr['hashed_password']):
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
-    # TODO remove secret
     token = jwt.encode({"sub": user.login, "userId": usr['id'], "exp": datetime.datetime.now() + datetime.timedelta(minutes=1440)}, SECRET_HASH, algorithm="HS256")
     response = RedirectResponse(url="/chat", status_code=302)
     response.set_cookie(
@@ -84,21 +85,46 @@ async def login(user: User = Depends(login_form), session: AsyncSession=Depends(
     return response
 
 
+IMAGE_DIR = Path("resources/avatars/")
+
+async def save_file(file: UploadFile, uid: int) -> str:
+    IMAGE_DIR.mkdir(parents=True, exist_ok=True)
+
+    file_extension = file.filename.split(".")[-1]
+    file_name = f"{uid}.{file_extension}"
+    file_path = IMAGE_DIR / file_name
+
+    with file_path.open("wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    return str(file_path)
+
+
+@router.post("/setAvatar")
+async def upload_image(request: Request, file: UploadFile = File(...), session: AsyncSession=Depends(get_async_session)):
+    data = getUserInfoFromJWT(request)
+    if file.content_type not in ["image/jpeg", "image/png"]:
+        raise HTTPException(status_code=400, detail="Invalid file format. Only JPEG and PNG are allowed.")
+    
+    file_path = await save_file(file, data['uid'])
+    await usrService.userChangeAvatar(file_path, data['uid'], session)
+    return {"filename": file.filename, "filepath": file_path}
+
 
 @router.post("/register")
 async def register(user: User = Depends(login_form), session: AsyncSession=Depends(get_async_session)):
     res = await usrService.userAdd(user.login, user.password, session)
-    return res
+    return RedirectResponse(url="/", status_code=302)
 
 
 
 @router.get("/chat")
 async def chat(request: Request, session: AsyncSession=Depends(get_async_session)):
     data = getUserInfoFromJWT(request)
+    avatar = await usrService.userGetAvatarById(data['uid'], session)
     chats = await chatService.getUserChats(session, data['uid'])
     messages = []
-    print("")
-    return templates.TemplateResponse("chat.html", {"request": request, **data, "chats": chats, "messages": messages})
+    return templates.TemplateResponse("chat.html", {"request": request, **data, "chats": chats, "messages": messages, "avatar": avatar})
 
 
 

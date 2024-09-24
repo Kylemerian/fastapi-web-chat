@@ -27,13 +27,10 @@ async def websocket(websocket: WebSocket, session: AsyncSession=Depends(get_asyn
     try:
         while True:
             data = await websocket.receive_json()
-            print("data: ", data)
             if data['type'] == 'auth':
                 token = data['cookies']['access_token']
                 payload = jwt.decode(token, SECRET_HASH, algorithms=["HS256"])
-                username = payload.get("sub")
                 uid = payload.get("userId")
-                print(token, username, uid)
                 manager.set_active(websocket, uid)
                 await manager.send_uid(uid)
             
@@ -44,7 +41,6 @@ async def websocket(websocket: WebSocket, session: AsyncSession=Depends(get_asyn
                 await manager.send_push(session, {**data, 'sender_id': uid})
             
             elif data['type'] == 'requestMessages':
-                print(data['chat_id'])
                 members = await chatMmbrService.getChatMembersByChatId(session, int(data['chat_id']))
                 # broken
                 # if uid not in members:
@@ -54,7 +50,6 @@ async def websocket(websocket: WebSocket, session: AsyncSession=Depends(get_asyn
                 await manager.send_history(uid, history, oppuid)
                 # return messages by chat_id
             elif data['type'] == 'addChat':
-                print("ADDCHAT REEQ", data)
                 opp = await usrService.userGetByLogin(data['nick'], session)
                 isExistChat = await chatService.isExistChatByUserIds(session, uid, opp['id'])
                 if not isExistChat:

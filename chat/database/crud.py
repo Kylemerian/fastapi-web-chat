@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.sql import and_
 from .models import *
 
@@ -79,6 +79,7 @@ async def getUserChats(session: AsyncSession, user_id: int):
     query = (
         select(
             chat_members_subquery.c.chat_id,
+            User.avatar_url.label('avatar'),
             User.username.label('participant_name'),
             Message.text.label('last_message_text'),
             last_message_subquery.c.last_message_time
@@ -109,6 +110,7 @@ async def getUserChats(session: AsyncSession, user_id: int):
     chat_list = [
         {
             'chat_id': row.chat_id,
+            'avatar': row.avatar,
             'participant_name': row.participant_name,
             'last_message_text': row.last_message_text,
             'last_message_time': row.last_message_time
@@ -172,3 +174,27 @@ async def isExistChatByUserIds(session: AsyncSession, user_id:int, user_id2: int
     chat_id = result.scalar()
 
     return chat_id is not None
+
+
+async def userChangeAvatar(path: str, uid: int, session: AsyncSession):
+    stmt = (
+        update(User)
+        .where(User.id == uid)
+        .values(avatar_url=path)
+        .execution_options(synchronize_session="fetch")
+    )
+    
+    await session.execute(stmt)
+    await session.commit()
+    
+    
+async def userGetAvatarById(uid: int, session: AsyncSession):
+    stmt = select(User).where(User.id == uid)
+    result = await session.execute(stmt)
+    
+    user = result.scalar_one_or_none()
+
+    if user is None:
+        return None
+
+    return user.avatar_url

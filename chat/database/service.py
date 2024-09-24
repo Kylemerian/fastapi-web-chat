@@ -22,7 +22,12 @@ class UserService:
     
     async def userGetByLogin(self, login: str, session: AsyncSession):
         return await userGetByLogin(login, session)
+    
+    async def userChangeAvatar(self, path: str, uid: int, session: AsyncSession):
+        return await userChangeAvatar(path, uid, session)
 
+    async def userGetAvatarById(self, uid: int, session: AsyncSession):
+        return await userGetAvatarById(uid, session)
 
 
 class MessageService:
