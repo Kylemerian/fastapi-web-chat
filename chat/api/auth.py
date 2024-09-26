@@ -66,7 +66,10 @@ def getUserInfoFromJWT(request: Request):
 
 
 @router.post("/login")
-async def login(user: User = Depends(login_form), session: AsyncSession=Depends(get_async_session)):
+async def login(
+    user: User = Depends(login_form),
+    session: AsyncSession=Depends(get_async_session)
+):
     usr = await usrService.userGetByLogin(user.login, session)
     if not usr or not usrService.verifyPassword(user.password, usr['hashed_password']):
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
@@ -101,7 +104,11 @@ async def save_file(file: UploadFile, uid: int) -> str:
 
 
 @router.post("/setAvatar")
-async def upload_image(request: Request, file: UploadFile = File(...), session: AsyncSession=Depends(get_async_session)):
+async def upload_image(
+    request: Request,
+    file: UploadFile = File(...),
+    session: AsyncSession=Depends(get_async_session)
+):
     data = getUserInfoFromJWT(request)
     if file.content_type not in ["image/jpeg", "image/png"]:
         raise HTTPException(status_code=400, detail="Invalid file format. Only JPEG and PNG are allowed.")
@@ -112,14 +119,20 @@ async def upload_image(request: Request, file: UploadFile = File(...), session: 
 
 
 @router.post("/register")
-async def register(user: User = Depends(login_form), session: AsyncSession=Depends(get_async_session)):
+async def register(
+    user: User = Depends(login_form),
+    session: AsyncSession=Depends(get_async_session)
+):
     res = await usrService.userAdd(user.login, user.password, session)
     return RedirectResponse(url="/", status_code=302)
 
 
 
 @router.get("/chat")
-async def chat(request: Request, session: AsyncSession=Depends(get_async_session)):
+async def chat(
+    request: Request,
+    session: AsyncSession=Depends(get_async_session)
+):
     data = getUserInfoFromJWT(request)
     avatar = await usrService.userGetAvatarById(data['uid'], session)
     chats = await chatService.getUserChats(session, data['uid'])
@@ -135,12 +148,12 @@ async def chat2(request: Request, session: AsyncSession=Depends(get_async_sessio
 
 
 # to rework
-@router.post("/addChat")
-async def addChat(user: int, user2: int, session: AsyncSession=Depends(get_async_session)):
-    return await chatService.addChat(session, user, user2)
+# @router.post("/addChat")
+# async def addChat(user: int, user2: int, session: AsyncSession=Depends(get_async_session)):
+#     return await chatService.addChat(session, user, user2)
 
 
-@router.post("/addMess")
-async def addMessage(chat_id: int, user_id:int, message: str, session: AsyncSession=Depends(get_async_session)):
-    time = func.now()
-    return await msgService.addMessage(chat_id, user_id, message, time, session)
+# @router.post("/addMess")
+# async def addMessage(chat_id: int, user_id:int, message: str, session: AsyncSession=Depends(get_async_session)):
+#     time = func.now()
+#     return await msgService.addMessage(chat_id, user_id, message, time, session)

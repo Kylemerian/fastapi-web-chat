@@ -11,3 +11,4 @@ DB_USER = os.environ.get("DB_USER")
 DB_PASS = os.environ.get("DB_PASS")
 
 SECRET_HASH = os.environ.get("SECRET_HASH")
+API_BASE_URL = os.environ.get("API_BASE_URL")
