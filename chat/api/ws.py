@@ -173,7 +173,8 @@ async def websocket(websocket: WebSocket, session: AsyncSession = Depends(get_as
             elif data['type'] == 'requestMessages':
                 token = data['cookies']['access_token']
                 chat_id = data['chat_id']
-                
+                payload = jwt.decode(token, SECRET_HASH, algorithms=["HS256"])
+                uid = payload.get("userId")
 
                 async with httpx.AsyncClient() as client:
                     response = await client.get(
@@ -184,7 +185,8 @@ async def websocket(websocket: WebSocket, session: AsyncSession = Depends(get_as
                 
                 if response.status_code == 200:
                     messages = response.json()
-                    await websocket.send_json({**messages, "type": "requestMessages"})
+                    # await websocket.send_json({**messages, "type": "requestMessages"})
+                    await manager.send_history(uid, messages["history"], messages["oppuid"])
                 else:
                     await websocket.send_json({
                         "error": "Failed to get messages",
@@ -192,4 +194,9 @@ async def websocket(websocket: WebSocket, session: AsyncSession = Depends(get_as
                     })
 
     except WebSocketDisconnect:
-        await manager.disconnect(websocket)
+        token = data.get('cookies', {}).get('access_token')
+        if token:
+            payload = jwt.decode(token, SECRET_HASH, algorithms=["HS256"])
+            uid = payload.get("userId")
+            if uid:
+                await manager.disconnect(uid)
