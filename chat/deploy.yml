@@ -1,0 +1,42 @@
+---
+- hosts: webservers
+  become: yes
+  tasks:
+    - name: Установка Docker
+      apt:
+        name: docker.io
+        state: present
+        update_cache: yes
+
+    - name: Установка Docker Compose
+      apt:
+        name: docker-compose
+        state: present
+
+    - name: Клонирование репозитория
+      git:
+        repo: 'https://github.com/Kylemerian/fastapi-web-chat.git'
+        dest: /code
+        version: main
+        
+    - name: Копирование .env файла
+      copy:
+        src: .env
+        dest: /code/chat/.env
+
+    - name: Остановка старых контейнеров
+      command: docker-compose down
+      args:
+        chdir: /code/chat
+
+    - name: Запуск новых контейнеров
+      command: docker-compose up --build -d
+      args:
+        chdir: /code/chat
+
+    - name: Проверка состояния контейнеров
+      command: docker-compose ps
+      args:
+        chdir: /code/chat
+
+# ansible-playbook -i hosts.ini deploy.yml
