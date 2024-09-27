@@ -1,4 +1,4 @@
-from sqlalchemy import select, Column, String, Integer, Time, ForeignKey
+from sqlalchemy import select, Column, String, Integer, DateTime, ForeignKey
 from .db import Base
 
 
@@ -23,7 +23,7 @@ class Message(Base):
     chat_id = Column(Integer, ForeignKey('chats.id'))
     sender_id = Column(Integer, ForeignKey('users.id'))
     text = Column(String)
-    time = Column(Time)
+    time = Column(DateTime)
     
 class ChatMembers(Base):
     __tablename__ = "chatmembers"

@@ -31,7 +31,7 @@ class UserService:
 
 
 class MessageService:
-    async def addMessage(self, chat_id: int, user_id: int, message: str, time: Time, session: AsyncSession):
+    async def addMessage(self, chat_id: int, user_id: int, message: str, time: DateTime, session: AsyncSession):
         return await addMessage(session, chat_id, user_id, message, time)
     
     async def getMessagesByChatId(self, session: AsyncSession, chat_id: int):

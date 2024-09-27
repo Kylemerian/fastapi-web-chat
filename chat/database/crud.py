@@ -45,7 +45,7 @@ async def addChat(session: AsyncSession, user_id: int, user_id2: int):
     return newChat.id
 
 
-async def addMessage(session: AsyncSession, chat_id: int, user_id:int, message: str, time: Time):
+async def addMessage(session: AsyncSession, chat_id: int, user_id:int, message: str, time: DateTime):
     newMessage = Message(chat_id=chat_id, sender_id=user_id, text=message, time=time)
     session.add(newMessage)
     await session.commit()

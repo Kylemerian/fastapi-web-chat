@@ -3,7 +3,9 @@ import redis
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.service import *
 
-redis_client = redis.StrictRedis(host='localhost', port=6379, db=0, decode_responses=True)
+# for local test
+# redis_client = redis.StrictRedis(host='localhost', port=6380, db=0, decode_responses=True)
+redis_client = redis.StrictRedis(host='redis', port=6379, db=0, decode_responses=True)
 
 class ConnectionManager:
     def __init__(self):

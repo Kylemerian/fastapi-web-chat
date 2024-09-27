@@ -4,14 +4,14 @@ from sqlalchemy import pool
 from alembic import context
 from database.db import Base
 from database import models
+from database.config import *
 
-# Настройка логирования
 config = context.config
 fileConfig(config.config_file_name)
 
 from sqlalchemy import create_engine
 
-DATABASE_URL = "postgresql://vltt:1@localhost/postgres"
+DATABASE_URL = "postgresql://{DB_USER}:{DB_PASS}@db/{DB_NAME}"
 
 def get_sync_engine():
     return create_engine(DATABASE_URL)

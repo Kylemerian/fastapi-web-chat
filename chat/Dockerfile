@@ -1,20 +1,19 @@
-# Используем официальный образ Python
 FROM python:3.11-slim
 
-# Устанавливаем рабочую директорию
+RUN apt-get update && apt-get install -y curl build-essential libpq-dev
+
+RUN curl -sSL https://install.python-poetry.org | python3 -
+
+ENV PATH="/root/.local/bin:$PATH"
+
 WORKDIR /code
 
-# Копируем requirements.txt
-COPY ./requirements.txt /code/requirements.txt
+COPY pyproject.toml poetry.lock*  /code/
 
-# Устанавливаем зависимости
-RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
+RUN poetry install --no-root --no-interaction --no-ansi
 
-# Копируем код приложения
 COPY . /code
 
-# Открываем порт 8000 для доступа к FastAPI
 EXPOSE 8000
 
-# Команда для запуска Uvicorn
-CMD ["uvicorn", "chat.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["poetry", "run", "uvicorn", "chat.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
